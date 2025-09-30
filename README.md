@@ -42,7 +42,7 @@ mlops-group14/
 ```
 
 ## Status
-- [ ] Introduction
+- [x] Introduction
 - [x] Project scoping
 - [ ] Data
 - [ ] Modeling
