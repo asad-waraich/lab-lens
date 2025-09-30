@@ -205,3 +205,21 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Project-specific: Medical datasets
+data/mimic-iii/
+data/medmnist/
+data/processed/
+*.csv
+*.parquet
+*.pt
+*.pkl
+
+# Model files
+*.pth
+*.onnx
+models/
+
+# MLflow tracking
+mlruns/
