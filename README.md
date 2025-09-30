@@ -27,6 +27,7 @@ An end-to-end MLOps pipeline for healthcare that combines medical report summari
 - **MedMNIST-ChestMNIST**: Pre-processed 28×28 chest X-rays (immediate access)
 
 ## Project Structure
+```
 mlops-group14/
 ├── docs/           # Documentation and scoping documents
 ├── notebooks/      # Data exploration and experiments
@@ -38,7 +39,7 @@ mlops-group14/
 ├── scripts/        # Setup and utility scripts
 ├── tests/          # Unit tests
 └── data/           # Data storage (not tracked in git)
-
+```
 
 ## Status
 - [x] Project scoping
