@@ -42,9 +42,9 @@ mlops-group14/
 ```
 
 ## Status
-- [ ]Introduction
+- [ ] Introduction
 - [x] Project scoping
 - [ ] Data
-- [ ]Modeling
-- [ ]Deployment
-- [ ]Monitoring
+- [ ] Modeling
+- [ ] Deployment
+- [ ] Monitoring
