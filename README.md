@@ -1,4 +1,4 @@
-# mlops-group14
+# Lab Lens
 Multi-Modal Healthcare Intelligence Platform for Medical Report Summarization and Diagnostic Image Analysis
 
 ---
