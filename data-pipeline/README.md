@@ -20,15 +20,15 @@ A comprehensive data pipeline for processing and analyzing MIMIC-III medical dis
 ```
 Data-Pipeline/
 ├── data/
-│   ├── raw/                              # Raw data from BigQuery
-│   │   ├── mimic_discharge_labs.csv      # 5,000 discharge summaries with labs
+│   ├── raw/                             # Raw data from BigQuery
+│   │   ├── mimic_discharge_labs.csv     # 5,000 discharge summaries with labs
 │   │   └── mimic_complete_with_demographics.csv  # 9,996 records with demographics
-│   └── processed/                        # Processed data
+│   └── processed/                       # Processed data
 │       ├── processed_discharge_summaries.csv
 │       └── preprocessing_report.csv
 ├── scripts/
-│   ├── preprocessing.py                  # Text cleaning and feature extraction
-│   ├── validation.py                     # Data quality validation
+│   ├── preprocessing.py                 # Text cleaning and feature extraction
+│   ├── validation.py                    # Data quality validation
 │   └── bias_detection.py                # Demographic bias analysis
 ├── logs/
 │   ├── validation_report.json           # Data quality metrics
@@ -42,8 +42,8 @@ Data-Pipeline/
 ├── notebooks/
 │   ├── data_acquisition.ipynb           # BigQuery data extraction
 │   └── preprocessing.ipynb              # Preprocessing development
-├── requirements.txt                      # Python dependencies
-└── README.md                            # This file
+├── requirements.txt                     # Python dependencies
+└── README.md                            
 ```
 
 ## Setup Instructions
