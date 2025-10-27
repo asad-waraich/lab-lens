@@ -1,0 +1,20 @@
+# Virtual environment
+.venv/
+
+# Google Cloud SDK (too large)
+google-cloud-sdk/
+
+# Large data files
+data/raw/*.csv
+data/processed/*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+
+# OS files
+.DS_Store
+
+# Large log files
+logs/*.json
+logs/*.csv

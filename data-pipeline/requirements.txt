@@ -1,0 +1,12 @@
+pandas
+numpy
+matplotlib
+seaborn
+scipy
+google-cloud-bigquery
+google-cloud-storage
+db-dtypes
+pydata-google-auth
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
