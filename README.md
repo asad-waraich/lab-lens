@@ -1,9 +1,9 @@
-# Lab Lens
+# Lab Lens:  Healthcare Intelligence Platform
+
 Multi-Modal Healthcare Intelligence Platform for Medical Report Summarization and Diagnostic Image Analysis
 
 ---
 
-## 🏥 MedBridge: Healthcare Intelligence Platform
 
 ### Project Overview
 An end-to-end MLOps pipeline for healthcare that combines medical report summarization with diagnostic image analysis.
