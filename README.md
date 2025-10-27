@@ -47,4 +47,4 @@ mlops-group14/
 - [ ] Data
 - [ ] Modeling
 - [ ] Deployment
-- [ ] Monitoring
+- [ ] Monitoring# Renamed repository to lab-lens
