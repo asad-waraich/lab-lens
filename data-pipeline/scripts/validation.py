@@ -6,15 +6,23 @@ Description: Validates data quality, integrity, and completeness
 
 import pandas as pd
 import numpy as np
-import logging
 import json
 import os
 from typing import Dict, List, Tuple, Any
 from datetime import datetime
+import sys
+
+# Add src directory to path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+
+from utils.logging_config import get_logger, log_data_operation
+from utils.error_handling import (
+    DataValidationError, ErrorHandler, safe_execute, 
+    validate_dataframe, validate_file_path, ErrorContext
+)
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class MIMICDataValidator:
     """Comprehensive data validation for MIMIC-III pipeline"""
@@ -22,7 +30,13 @@ class MIMICDataValidator:
     def __init__(self, input_path: str = 'data/processed', output_path: str = 'logs'):
         self.input_path = input_path
         self.output_path = output_path
-        os.makedirs(output_path, exist_ok=True)
+        self.error_handler = ErrorHandler(logger)
+        
+        try:
+            os.makedirs(output_path, exist_ok=True)
+            logger.info(f"Initialized validator with input: {input_path}, output: {output_path}")
+        except Exception as e:
+            raise self.error_handler.handle_file_error("directory_creation", output_path, e)
         
         # Define validation rules
         self.validation_rules = {

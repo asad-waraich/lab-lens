@@ -3,17 +3,24 @@
 # Author: Team Member 2
 # Description: Cleans and processes discharge summaries for ML pipeline
 
-
 import pandas as pd
 import numpy as np
 import re
-import logging
 from typing import Dict, List, Tuple
 import os
+import sys
+
+# Add src directory to path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+
+from utils.logging_config import get_logger, log_data_operation
+from utils.error_handling import (
+    DataProcessingError, ErrorHandler, safe_execute, 
+    validate_dataframe, validate_file_path, ErrorContext
+)
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class MIMICPreprocessor:
     """Preprocessor for MIMIC-III discharge summaries and lab data"""
@@ -21,7 +28,13 @@ class MIMICPreprocessor:
     def __init__(self, input_path: str = 'data/raw', output_path: str = 'data/processed'):
         self.input_path = input_path
         self.output_path = output_path
-        os.makedirs(output_path, exist_ok=True)
+        self.error_handler = ErrorHandler(logger)
+        
+        try:
+            os.makedirs(output_path, exist_ok=True)
+            logger.info(f"Initialized preprocessor with input: {input_path}, output: {output_path}")
+        except Exception as e:
+            raise self.error_handler.handle_file_error("directory_creation", output_path, e)
         
         # Medical abbreviations dictionary
         self.medical_abbrev = {
@@ -48,11 +61,21 @@ class MIMICPreprocessor:
             'cv': 'cardiovascular'
         }
         
+    @safe_execute("load_data", logger, ErrorHandler(logger))
+    @log_data_operation(logger, "load_data")
     def load_data(self, filename: str = 'mimic_discharge_labs.csv') -> pd.DataFrame:
         """Load the raw data"""
         filepath = os.path.join(self.input_path, filename)
+        
+        validate_file_path(filepath, logger, must_exist=True)
+        
         logger.info(f"Loading data from {filepath}")
         df = pd.read_csv(filepath)
+        
+        # Validate DataFrame structure
+        required_columns = ['hadm_id', 'subject_id', 'cleaned_text']
+        validate_dataframe(df, required_columns, logger)
+        
         logger.info(f"Loaded {len(df)} records")
         return df
     

@@ -5,7 +5,6 @@ Description: Detects and analyzes potential biases in medical documentation
 
 import pandas as pd
 import numpy as np
-import logging
 import json
 import os
 import matplotlib.pyplot as plt
@@ -13,10 +12,19 @@ import seaborn as sns
 from typing import Dict, List, Tuple, Any
 from scipy import stats
 from datetime import datetime
+import sys
+
+# Add src directory to path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+
+from utils.logging_config import get_logger, log_data_operation
+from utils.error_handling import (
+    BiasDetectionError, ErrorHandler, safe_execute, 
+    validate_dataframe, validate_file_path, ErrorContext
+)
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class MIMICBiasDetector:
     """Comprehensive bias detection for MIMIC-III medical records"""
@@ -24,8 +32,14 @@ class MIMICBiasDetector:
     def __init__(self, input_path: str = 'data/raw', output_path: str = 'logs'):
         self.input_path = input_path
         self.output_path = output_path
-        os.makedirs(output_path, exist_ok=True)
-        os.makedirs(os.path.join(output_path, 'bias_plots'), exist_ok=True)
+        self.error_handler = ErrorHandler(logger)
+        
+        try:
+            os.makedirs(output_path, exist_ok=True)
+            os.makedirs(os.path.join(output_path, 'bias_plots'), exist_ok=True)
+            logger.info(f"Initialized bias detector with input: {input_path}, output: {output_path}")
+        except Exception as e:
+            raise self.error_handler.handle_file_error("directory_creation", output_path, e)
         
         # Define demographic groups for analysis
         self.demographic_groups = {
@@ -46,6 +60,8 @@ class MIMICBiasDetector:
             }
         }
     
+    @safe_execute("load_data", logger, ErrorHandler(logger))
+    @log_data_operation(logger, "load_data")
     def load_data(self, filename: str = 'mimic_complete_with_demographics.csv') -> pd.DataFrame:
         """Load data with demographics"""
         filepath = os.path.join(self.input_path, filename)
@@ -55,8 +71,15 @@ class MIMICBiasDetector:
             logger.warning(f"Demographics file not found, loading basic data")
             filepath = os.path.join(self.input_path, 'mimic_discharge_labs.csv')
         
+        validate_file_path(filepath, logger, must_exist=True)
+        
         logger.info(f"Loading data from {filepath}")
         df = pd.read_csv(filepath)
+        
+        # Validate DataFrame structure
+        required_columns = ['hadm_id', 'subject_id']
+        validate_dataframe(df, required_columns, logger)
+        
         logger.info(f"Loaded {len(df)} records for bias detection")
         return df
     

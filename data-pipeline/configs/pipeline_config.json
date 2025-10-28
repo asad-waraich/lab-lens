@@ -1,0 +1,93 @@
+{
+  "pipeline_config": {
+    "input_path": "data/raw",
+    "output_path": "data/processed",
+    "logs_path": "logs",
+    "enable_preprocessing": true,
+    "enable_validation": true,
+    "enable_bias_detection": true,
+    "enable_automated_bias_handling": true,
+    "auto_mitigation": true,
+    "save_intermediate_results": true,
+    "log_level": "INFO"
+  },
+  "bias_detection_config": {
+    "enabled": true,
+    "auto_mitigation": true,
+    "report_generation": true,
+    "alert_thresholds": {
+      "gender_cv_max": 5.0,
+      "ethnicity_cv_max": 10.0,
+      "age_cv_max": 8.0,
+      "overall_bias_score_max": 10.0,
+      "min_sample_size": 30,
+      "significance_threshold": 0.05
+    },
+    "mitigation_enabled": true,
+    "mitigation_strategies": {
+      "sampling": "stratified_sampling",
+      "weighting": "demographic_weighting",
+      "augmentation": "synthetic_data_generation",
+      "balancing": "oversampling_minority_groups"
+    }
+  },
+  "validation_config": {
+    "text_length_min": 100,
+    "text_length_max": 100000,
+    "age_min": 0,
+    "age_max": 120,
+    "required_columns": ["hadm_id", "subject_id", "cleaned_text"],
+    "expected_sections": ["discharge_diagnosis", "discharge_medications", "follow_up"],
+    "validation_score_threshold": 80
+  },
+  "preprocessing_config": {
+    "medical_abbreviations": {
+      "pt": "patient",
+      "pts": "patients",
+      "hx": "history",
+      "h/o": "history of",
+      "c/o": "complaining of",
+      "w/": "with",
+      "w/o": "without",
+      "s/p": "status post",
+      "yo": "year old",
+      "y/o": "year old",
+      "pod": "post operative day",
+      "bid": "twice daily",
+      "tid": "three times daily",
+      "qid": "four times daily",
+      "prn": "as needed",
+      "dx": "diagnosis",
+      "tx": "treatment",
+      "sx": "symptoms",
+      "abd": "abdomen",
+      "gi": "gastrointestinal",
+      "cv": "cardiovascular"
+    },
+    "section_patterns": {
+      "chief_complaint": "(?:chief complaint|c\\.c\\.|cc):(.*?)(?=\\n[A-Z][a-z]*:|\\n\\n|\\Z)",
+      "history_present_illness": "(?:history of present illness|hpi|present illness):(.*?)(?=\\n[A-Z][a-z]*:|\\n\\n|\\Z)",
+      "past_medical_history": "(?:past medical history|pmh|medical history):(.*?)(?=\\n[A-Z][a-z]*:|\\n\\n|\\Z)",
+      "medications": "(?:medications?|meds|current medications?):(.*?)(?=\\n[A-Z][a-z]*:|\\n\\n|\\Z)",
+      "discharge_diagnosis": "(?:discharge diagnos[ie]s|discharge dx|final diagnos[ie]s):(.*?)(?=\\n[A-Z][a-z]*:|\\n\\n|\\Z)",
+      "discharge_medications": "(?:discharge medications?|discharge meds):(.*?)(?=\\n[A-Z][a-z]*:|\\n\\n|\\Z)",
+      "follow_up": "(?:follow[\\s-]?up|followup instructions?|disposition):(.*?)(?=\\n[A-Z][a-z]*:|\\n\\n|\\Z)",
+      "physical_exam": "(?:physical exam|pe|examination):(.*?)(?=\\n[A-Z][a-z]*:|\\n\\n|\\Z)",
+      "hospital_course": "(?:hospital course|brief hospital course|summary of hospital course):(.*?)(?=\\n[A-Z][a-z]*:|\\n\\n|\\Z)"
+    }
+  },
+  "logging_config": {
+    "log_level": "INFO",
+    "log_to_file": true,
+    "log_to_console": true,
+    "max_file_size": 10485760,
+    "backup_count": 5,
+    "log_format": "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
+  },
+  "performance_config": {
+    "enable_performance_logging": true,
+    "enable_data_metrics_logging": true,
+    "enable_function_call_logging": false,
+    "performance_threshold_seconds": 60
+  }
+}
