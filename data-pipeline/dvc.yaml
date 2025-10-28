@@ -1,0 +1,14 @@
+stages:
+  run_pipeline:
+    cmd: python scripts/main_pipeline.py
+    deps:
+      - scripts/main_pipeline.py
+      - scripts/preprocessing.py
+      - scripts/validation.py
+      - scripts/bias_detection.py
+      - scripts/automated_bias_handler.py
+      - configs/pipeline_config.json
+    outs:
+      - data/processed/processed_discharge_summaries.csv
+      - logs/validation_report.json
+      - logs/bias_report.json

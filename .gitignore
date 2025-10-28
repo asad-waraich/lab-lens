@@ -222,4 +222,5 @@ data/processed/
 models/
 
 # MLflow tracking
-mlruns/
+mlruns/.DS_Store
+**/.DS_Store
