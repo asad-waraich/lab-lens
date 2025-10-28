@@ -29,9 +29,6 @@ class AutomatedBiasHandler:
         self.logger = get_logger(__name__)
         self.error_handler = ErrorHandler(self.logger)
         
-        # Load configuration
-        self.config = self._load_config(config_path)
-        
         # Bias thresholds
         self.bias_thresholds = {
             'gender_cv_max': 5.0,  # Maximum coefficient of variation for gender
@@ -49,6 +46,9 @@ class AutomatedBiasHandler:
             'augmentation': 'synthetic_data_generation',
             'balancing': 'oversampling_minority_groups'
         }
+        
+        # Load configuration
+        self.config = self._load_config(config_path)
     
     def _load_config(self, config_path: Optional[str]) -> Dict[str, Any]:
         """Load bias detection configuration"""
@@ -71,7 +71,6 @@ class AutomatedBiasHandler:
         
         return default_config
     
-    @safe_execute("detect_bias", self.logger, ErrorHandler(self.logger))
     def detect_bias(self, df: pd.DataFrame, bias_report: Dict[str, Any]) -> Dict[str, Any]:
         """
         Detect bias patterns and determine if mitigation is needed
@@ -186,7 +185,6 @@ class AutomatedBiasHandler:
         
         return recommendations
     
-    @safe_execute("apply_mitigation", self.logger, ErrorHandler(self.logger))
     def apply_mitigation(self, df: pd.DataFrame, recommendations: List[Dict[str, Any]]) -> pd.DataFrame:
         """
         Apply bias mitigation strategies to the dataset
@@ -325,7 +323,6 @@ class AutomatedBiasHandler:
         
         return df
     
-    @safe_execute("generate_bias_report", self.logger, ErrorHandler(self.logger))
     def generate_bias_report(self, detection_results: Dict[str, Any], 
                            mitigation_applied: bool = False) -> Dict[str, Any]:
         """Generate comprehensive bias detection and mitigation report"""
@@ -398,7 +395,6 @@ class AutomatedBiasHandler:
         
         return next_steps
     
-    @safe_execute("save_bias_report", self.logger, ErrorHandler(self.logger))
     def save_bias_report(self, report: Dict[str, Any], output_path: str):
         """Save bias detection and mitigation report"""
         os.makedirs(output_path, exist_ok=True)

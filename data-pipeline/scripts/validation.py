@@ -219,7 +219,8 @@ class MIMICDataValidator:
                 # Calculate average length of non-empty sections
                 non_empty_sections = df[df[section] != ''][section] if section in df.columns else pd.Series()
                 if len(non_empty_sections) > 0:
-                    avg_length = non_empty_sections.str.len().mean()
+                    # Convert to string first to handle mixed types
+                    avg_length = non_empty_sections.astype(str).str.len().mean()
                     section_report['average_section_lengths'][section] = round(avg_length, 2)
                 
                 # Count empty sections
