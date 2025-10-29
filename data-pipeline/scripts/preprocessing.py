@@ -153,6 +153,7 @@ class MIMICPreprocessor:
         logger.info("Calculating text features...")
         
         # Basic counts
+        df['text_length'] = df['cleaned_text'].fillna('').str.len()
         df['word_count'] = df['cleaned_text'].fillna('').str.split().str.len()
         df['sentence_count'] = df['cleaned_text'].fillna('').str.split('[.!?]').str.len()
         df['avg_word_length'] = df['cleaned_text'].fillna('').apply(

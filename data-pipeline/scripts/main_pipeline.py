@@ -8,6 +8,7 @@ import os
 import sys
 import argparse
 import json
+import pandas as pd
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -97,8 +98,6 @@ class LabLensPipeline:
         
         return default_config
     
-    @safe_execute("run_preprocessing", logger, ErrorHandler(logger))
-    @log_data_operation(logger, "preprocessing")
     def run_preprocessing(self) -> Dict[str, Any]:
         """Run data preprocessing step"""
         with ErrorContext("preprocessing", self.logger, self.error_handler) as ctx:
@@ -117,8 +116,6 @@ class LabLensPipeline:
                 'success': True
             }
     
-    @safe_execute("run_validation", logger, ErrorHandler(logger))
-    @log_data_operation(logger, "validation")
     def run_validation(self) -> Dict[str, Any]:
         """Run data validation step"""
         with ErrorContext("validation", self.logger, self.error_handler) as ctx:
@@ -137,8 +134,6 @@ class LabLensPipeline:
                 'success': True
             }
     
-    @safe_execute("run_bias_detection", logger, ErrorHandler(logger))
-    @log_data_operation(logger, "bias_detection")
     def run_bias_detection(self) -> Dict[str, Any]:
         """Run bias detection step"""
         with ErrorContext("bias_detection", self.logger, self.error_handler) as ctx:
@@ -157,8 +152,6 @@ class LabLensPipeline:
                 'success': True
             }
     
-    @safe_execute("run_automated_bias_handling", logger, ErrorHandler(logger))
-    @log_data_operation(logger, "automated_bias_handling")
     def run_automated_bias_handling(self, df: Any, bias_report: Dict[str, Any]) -> Dict[str, Any]:
         """Run automated bias handling step"""
         with ErrorContext("automated_bias_handling", self.logger, self.error_handler) as ctx:
@@ -198,7 +191,6 @@ class LabLensPipeline:
                 'success': True
             }
     
-    @safe_execute("run_complete_pipeline", logger, ErrorHandler(logger))
     def run_complete_pipeline(self) -> Dict[str, Any]:
         """Run the complete data processing pipeline"""
         self.pipeline_state['start_time'] = datetime.now()
@@ -260,7 +252,7 @@ class LabLensPipeline:
                 'steps_completed': self.pipeline_state['steps_completed'],
                 'steps_failed': self.pipeline_state['steps_failed'],
                 'success_rate': len(self.pipeline_state['steps_completed']) / 
-                              (len(self.pipeline_state['steps_completed']) + len(self.pipeline_state['steps_failed']))
+                              max(1, len(self.pipeline_state['steps_completed']) + len(self.pipeline_state['steps_failed']))
             },
             'data_metrics': {
                 'validation_score': self.pipeline_state['validation_score'],
