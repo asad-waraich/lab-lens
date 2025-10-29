@@ -15,12 +15,28 @@ A comprehensive, production-ready data pipeline for processing and analyzing MIM
 
 ### 👥 Team Members
 
-- **Asad Ullah Waraich** - Data Acquisition & Pipeline Architecture
-- **Shruthi Kashetty** - Model Development & Training  
-- **Mihir Harishankar Parab** - Data Processing & Validation
-- **Sri Lakshmi Swetha Jalluri** - Bias Detection & Fairness
-- **Dhruv Rameshbhai Gajera** - Infrastructure & Deployment
-- **Shahid Kamal** - System Integration & Quality Assurance
+- **Asad Ullah Waraich** 
+- **Shruthi Kashetty** 
+- **Mihir Harishankar Parab** 
+- **Sri Lakshmi Swetha Jalluri** 
+- **Dhruv Rameshbhai Gajera** 
+- **Shahid Kamal** 
+
+## Team Contributions
+
+**Asad Ullah Waraich**:
+- Data acquisition from BigQuery with 500K+ records
+- Complete preprocessing pipeline with medical text processing
+- Data versioning using DVC for reproducibility
+- Data validation with 100% quality score achievement
+- Bias detection across demographic slices (age, gender, insurance)
+- Comprehensive logging and error handling system
+- Pipeline architecture and integration
+
+- **Shahid Kamal** - Bias mitigation strategies
+- **Shruthi, Swetha, Mihir** - Airflow orchestration and DAG implementation
+- **Dhruv Gajera** - Data preprocessing script
+
 
 ## 📊 Dataset Information
 
