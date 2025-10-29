@@ -33,9 +33,9 @@ A comprehensive, production-ready data pipeline for processing and analyzing MIM
 - Comprehensive logging and error handling system
 - Pipeline architecture and integration
 
-- **Shahid Kamal** - Bias mitigation strategies
-- **Shruthi, Swetha, Mihir** - Airflow orchestration and DAG implementation
-- **Dhruv Gajera** - Data preprocessing script
+**Shahid Kamal** - Bias mitigation strategies
+**Shruthi, Swetha, Mihir** - Airflow orchestration and DAG implementation
+**Dhruv Gajera** - Data preprocessing script
 
 
 ## 📊 Dataset Information
