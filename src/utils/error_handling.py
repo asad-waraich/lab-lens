@@ -3,6 +3,7 @@ Error Handling Utilities for Lab Lens
 Provides comprehensive error handling and custom exceptions
 """
 
+from pathlib import Path
 import logging
 import traceback
 import sys

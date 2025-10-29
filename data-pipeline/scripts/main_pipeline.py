@@ -11,6 +11,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
+import pandas as pd
 
 # Add src directory to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
@@ -22,10 +23,10 @@ from utils.error_handling import (
 )
 
 # Import pipeline components
-from scripts.preprocessing import MIMICPreprocessor
-from scripts.validation import MIMICDataValidator
-from scripts.bias_detection import MIMICBiasDetector
-from scripts.automated_bias_handler import AutomatedBiasHandler, run_automated_bias_handling
+from preprocessing import MIMICPreprocessor
+from validation import MIMICDataValidator
+from bias_detection import MIMICBiasDetector
+from automated_bias_handler import AutomatedBiasHandler, run_automated_bias_handling
 
 
 class LabLensPipeline:
