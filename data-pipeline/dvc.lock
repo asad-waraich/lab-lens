@@ -1,0 +1,43 @@
+schema: '2.0'
+stages:
+  run_pipeline:
+    cmd: python scripts/main_pipeline.py --config configs/pipeline_config.json 
+      --skip-bias-handling
+    deps:
+    - path: configs/pipeline_config.json
+      hash: md5
+      md5: 4ebf05d5f956ed32b273c80fa0c14aa5
+      size: 3406
+    - path: data/raw/mimic_discharge_labs.csv
+      hash: md5
+      md5: a4de8b9470bd4b50ab94c0d27647c671
+      size: 46101696
+    - path: scripts/bias_detection.py
+      hash: md5
+      md5: 4511b807472f5ba868f51b6360da8387
+      size: 21696
+    - path: scripts/main_pipeline.py
+      hash: md5
+      md5: d91268cfc6a75b96133046a496f4a459
+      size: 15683
+    - path: scripts/preprocessing.py
+      hash: md5
+      md5: 26e8d143b1b449ea784f31d3cbc1f453
+      size: 13787
+    - path: scripts/validation.py
+      hash: md5
+      md5: 0ba34e643676a3fd901009b9755ab6bf
+      size: 17525
+    outs:
+    - path: data/processed/processed_discharge_summaries.csv
+      hash: md5
+      md5: 268a692c23459e9f9c4613721bcd4ab4
+      size: 107096220
+    - path: logs/bias_report.json
+      hash: md5
+      md5: aace815e543cab85cb39274575a79936
+      size: 10417
+    - path: logs/validation_report.json
+      hash: md5
+      md5: a1c83eedb98d995a7e537edfb5b2860d
+      size: 5744

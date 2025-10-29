@@ -1,6 +1,6 @@
 stages:
   run_pipeline:
-    cmd: cd scripts && python main_pipeline.py --config ../configs/pipeline_config.json --skip-bias-handling
+    cmd: python scripts/main_pipeline.py --config configs/pipeline_config.json --skip-bias-handling
     wdir: .
     deps:
       - scripts/main_pipeline.py
@@ -8,6 +8,7 @@ stages:
       - scripts/validation.py
       - scripts/bias_detection.py
       - configs/pipeline_config.json
+      - data/raw/mimic_discharge_labs.csv
     outs:
       - data/processed/processed_discharge_summaries.csv
       - logs/validation_report.json
