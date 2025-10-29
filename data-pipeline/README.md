@@ -24,7 +24,7 @@ A comprehensive, production-ready data pipeline for processing and analyzing MIM
 
 ## Team Contributions
 
-**Asad Ullah Waraich**:
+### Asad Ullah Waraich
 - Data acquisition from BigQuery with 500K+ records
 - Complete preprocessing pipeline with medical text processing
 - Data versioning using DVC for reproducibility
@@ -33,9 +33,20 @@ A comprehensive, production-ready data pipeline for processing and analyzing MIM
 - Comprehensive logging and error handling system
 - Pipeline architecture and integration
 
-**Shahid Kamal** - Bias mitigation strategies
-**Shruthi, Swetha, Mihir** - Airflow orchestration and DAG implementation
-**Dhruv Gajera** - Data preprocessing script
+### Shahid Kamal
+- Bias mitigation strategies
+
+### Shruthi Kashetty
+- Airflow orchestration and DAG implementation (collaborative)
+
+### Sri Lakshmi Swetha Jalluri
+- Airflow orchestration and DAG implementation (collaborative)
+
+### Mihir Harishankar Parab
+- Airflow orchestration and DAG implementation (collaborative)
+
+### Dhruv Rameshbhai Gajera
+- Data preprocessing script
 
 
 ## 📊 Dataset Information
