@@ -224,3 +224,5 @@ models/
 # MLflow tracking
 mlruns/.DS_Store
 **/.DS_Store
+.DS_Store
+**/.DS_Store
