@@ -41,3 +41,21 @@ stages:
       hash: md5
       md5: a1c83eedb98d995a7e537edfb5b2860d
       size: 5744
+  feature_engineering:
+    cmd: python scripts/feature_engineering.py --input 
+      data/processed/processed_discharge_summaries.csv --output 
+      data/processed/mimic_features_advanced.csv --with_sections
+    deps:
+    - path: data/processed/processed_discharge_summaries.csv
+      hash: md5
+      md5: 268a692c23459e9f9c4613721bcd4ab4
+      size: 107096220
+    - path: scripts/feature_engineering.py
+      hash: md5
+      md5: 994c45f67dc957156dfc5693268c8789
+      size: 12716
+    outs:
+    - path: data/processed/mimic_features_advanced.csv
+      hash: md5
+      md5: 1679cc8e0095a0c2ee78ba24ddc6dc53
+      size: 64129352

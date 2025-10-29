@@ -13,3 +13,10 @@ stages:
       - data/processed/processed_discharge_summaries.csv
       - logs/validation_report.json
       - logs/bias_report.json
+  feature_engineering:
+    cmd: python scripts/feature_engineering.py --input data/processed/processed_discharge_summaries.csv --output data/processed/mimic_features_advanced.csv --with_sections
+    deps:
+      - scripts/feature_engineering.py
+      - data/processed/processed_discharge_summaries.csv
+    outs:
+      - data/processed/mimic_features_advanced.csv

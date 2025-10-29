@@ -18,12 +18,12 @@ Lab Lens is an end-to-end MLOps pipeline for healthcare that combines medical re
 
 ### 👥 Team Members
 
-- **Asad Ullah Waraich** - Data Acquisition & Pipeline Architecture
-- **Shruthi Kashetty** - Model Development & Training
-- **Mihir Harishankar Parab** - Data Processing & Validation
-- **Sri Lakshmi Swetha Jalluri** - Bias Detection & Fairness
-- **Dhruv Rameshbhai Gajera** - Infrastructure & Deployment
-- **Shahid Kamal** - System Integration & Quality Assurance
+- **Asad Ullah Waraich** 
+- **Shruthi Kashetty** 
+- **Mihir Harishankar Parab** 
+- **Sri Lakshmi Swetha Jalluri** 
+- **Dhruv Rameshbhai Gajera** 
+- **Shahid Kamal** 
 
 ## 📊 Project Components
 
@@ -95,7 +95,7 @@ lab-lens/
 
 ### Prerequisites
 
-- **Python**: 3.12+ (Note: Python 3.13 has compatibility issues)
+- **Python**: 3.12+
 - **Google Cloud Platform**: Account with BigQuery access
 - **PhysioNet Credentialing**: Required for MIMIC-III access
 - **Memory**: Minimum 8GB RAM recommended

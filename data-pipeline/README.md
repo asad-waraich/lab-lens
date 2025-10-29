@@ -41,9 +41,11 @@ A comprehensive, production-ready data pipeline for processing and analyzing MIM
 
 ### Sri Lakshmi Swetha Jalluri
 - Airflow orchestration and DAG implementation (collaborative)
+- Feature Engineering
 
 ### Mihir Harishankar Parab
 - Airflow orchestration and DAG implementation (collaborative)
+- Tests
 
 ### Dhruv Rameshbhai Gajera
 - Data preprocessing script
@@ -158,6 +160,36 @@ python scripts/main_pipeline.py \
   --logs-path /path/to/logs
 ```
 
+### Data Version Control with DVC
+```bash
+# Initialize DVC (already done)
+dvc init
+
+# Pull data files
+dvc pull
+
+# Run the complete reproducible pipeline
+dvc repro
+
+# Check pipeline status
+dvc dag  # View pipeline DAG
+dvc status  # Check what needs to be run
+
+# Push processed data to remote
+dvc push
+```
+
+**Pipeline Stages**:
+1. `run_pipeline`: Main preprocessing and analysis
+2. `feature_engineering`: Advanced feature extraction (47 features)
+
+**Reproducibility**: Anyone can recreate exact results with:
+```bash
+git clone <repo>
+dvc pull
+dvc repro
+```
+
 ## 🔧 Pipeline Components
 
 ### 1. Data Acquisition (BigQuery Integration)
@@ -175,6 +207,9 @@ Extracts MIMIC-III data from Google BigQuery:
 - ✅ Lab result aggregation with abnormal flags
 - ✅ Demographic data joining for bias analysis
 - ✅ Performance: ~30 seconds for 5,000 records
+- ✅ Successfully processed 5,000+ discharge summaries with 47 engineered features
+- ✅ Implemented DVC for complete reproducibility
+- ✅ Advanced NLP feature engineering with medical domain expertise
 
 ### 2. Data Preprocessing
 **Script**: `scripts/preprocessing.py`
@@ -196,6 +231,25 @@ Processes raw discharge summaries with comprehensive text analysis:
 - Lab data processing and critical value extraction
 
 **Output**: Structured dataset with extracted features ready for ML modeling
+
+### 2.5. Advanced Feature Engineering
+**Script**: `scripts/feature_engineering.py`
+
+Enhanced feature extraction with medical domain expertise:
+
+**Advanced NLP Features**:
+- **Medical Keyword Detection**: Identifies 20+ chronic diseases, 16+ symptoms, 25+ medications
+- **Medication Pattern Recognition**: Detects drugs by suffix patterns (-pril, -statin, etc.)
+- **Section Flags**: Automated detection of key sections (allergies, medications, hospital course)
+- **Negation Density**: Measures negative context in medical text
+
+**Statistical Features**:
+- **Severity Ratios**: Abnormal lab ratio calculations
+- **Comorbidity Scores**: Based on diagnosis counts
+- **Text Complexity Metrics**: Normalized text length and token analysis
+- **One-hot Encoding**: Demographics (gender, ethnicity, insurance, admission type, language)
+
+**Output**: 47 engineered features optimized for bias detection and ML modeling
 
 ### 3. Data Validation
 **Script**: `scripts/validation.py`
@@ -295,6 +349,14 @@ Intelligent bias correction with multiple strategies:
 - **Tested up to**: 30,000 records
 - **Maximum available**: 59,652 discharge summaries
 - **Cloud-based architecture**: Supports full dataset processing
+
+### Pipeline Execution Metrics
+- **Preprocessing**: ~17 seconds for 5,000 records
+- **Feature Engineering**: ~44 seconds (47 features created)
+- **Validation**: ~2 seconds
+- **Bias Detection**: ~3 seconds
+- **Total Pipeline**: ~66 seconds with DVC orchestration
+- **Features Generated**: 47 (from 32 base features)
 
 ## 🛡️ Error Handling & Logging
 
@@ -528,7 +590,6 @@ mitigated_df, report = run_automated_bias_handling(df, bias_report)
 
 ### Phase 1: Enhanced Processing
 - [ ] **Airflow Integration**: Automated scheduling and orchestration
-- [ ] **DVC Implementation**: Data versioning for reproducibility
 - [ ] **Advanced NLP**: BioBERT integration for medical entity extraction
 - [ ] **Real-time Processing**: Stream processing for new admissions
 

@@ -226,3 +226,27 @@ mlruns/.DS_Store
 **/.DS_Store
 .DS_Store
 **/.DS_Store
+
+# DVC
+/data/raw/*.csv
+/data/processed/*.csv
+/logs/*.log
+*.dvc.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+ENV/
+
+# System
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Logs
+logs/*.json
+logs/bias_plots/*.png
