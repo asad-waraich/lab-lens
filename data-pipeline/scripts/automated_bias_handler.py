@@ -39,12 +39,12 @@ class AutomatedBiasHandler:
             'significance_threshold': 0.05  # Statistical significance threshold
         }
         
-        # Mitigation strategies
+        # Mitigation strategies (ordered by safety for structured medical data)
         self.mitigation_strategies = {
-            'sampling': 'stratified_sampling',
-            'weighting': 'demographic_weighting',
-            'augmentation': 'synthetic_data_generation',
-            'balancing': 'oversampling_minority_groups'
+            'sampling': 'stratified_sampling',  # Safest: maintains data integrity
+            'weighting': 'demographic_weighting',  # Safe: adds weights without modifying data
+            'balancing': 'oversampling_minority_groups',  # Safe: duplicates existing records
+            'augmentation': 'intelligent_oversampling'  # Note: Not true synthetic generation for structured data
         }
         
         # Load configuration
@@ -148,7 +148,18 @@ class AutomatedBiasHandler:
         return detection_results
     
     def _generate_recommendations(self, detection_results: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Generate bias mitigation recommendations"""
+        """
+        Generate bias mitigation recommendations
+        
+        Note: Recommendations prioritize safe methods for structured medical data:
+        1. Stratified sampling (safest - maintains all data integrity)
+        2. Oversampling (safe - duplicates existing records)
+        3. Demographic weighting (safe - adds weights without modifying data)
+        4. Intelligent oversampling (last resort - avoids true synthetic generation)
+        
+        True synthetic data generation is NOT recommended for structured medical data
+        as it can create invalid clinical values and break data relationships.
+        """
         recommendations = []
         
         for bias in detection_results['critical_biases']:
@@ -210,7 +221,8 @@ class AutomatedBiasHandler:
             elif strategy == 'demographic_weighting':
                 mitigated_df = self._apply_demographic_weighting(mitigated_df)
             
-            elif strategy == 'synthetic_data_generation':
+            elif strategy == 'synthetic_data_generation' or strategy == 'intelligent_oversampling':
+                # For structured medical data, use safe oversampling instead of synthetic generation
                 mitigated_df = self._apply_synthetic_augmentation(mitigated_df)
         
         self.logger.info(f"Applied bias mitigation: {len(df)} -> {len(mitigated_df)} records")
@@ -290,36 +302,60 @@ class AutomatedBiasHandler:
         return df
     
     def _apply_synthetic_augmentation(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Apply synthetic data augmentation for minority groups"""
-        # Simple augmentation by duplicating and slightly modifying records
+        """
+        Apply safe data augmentation for minority groups using intelligent oversampling
+        
+        Note: For structured medical data, we use smart oversampling rather than
+        synthetic data generation to maintain clinical validity and data integrity.
+        This method duplicates existing records with slight variations only to safe
+        non-clinical fields (if any), maintaining referential integrity.
+        """
+        self.logger.warning(
+            "Synthetic data generation is not recommended for structured medical data. "
+            "Using intelligent oversampling instead to maintain clinical validity."
+        )
+        
+        # For structured medical data, use oversampling instead of synthetic generation
+        # This maintains clinical validity and data integrity
         demo_cols = [col for col in df.columns if col in ['gender', 'ethnicity_group', 'age_group']]
         
-        if demo_cols:
-            augmented_records = []
-            
-            for name, group in df.groupby(demo_cols):
-                if len(group) < self.bias_thresholds['min_sample_size']:
-                    # Create synthetic records by duplicating and modifying
-                    needed = self.bias_thresholds['min_sample_size'] - len(group)
-                    
-                    for _ in range(min(needed, len(group))):
-                        synthetic_record = group.sample(1).copy()
-                        # Add small random variations to numeric columns
-                        numeric_cols = synthetic_record.select_dtypes(include=[np.number]).columns
-                        for col in numeric_cols:
-                            if col not in ['hadm_id', 'subject_id']:  # Don't modify IDs
-                                synthetic_record[col] *= np.random.uniform(0.95, 1.05)
-                        
-                        synthetic_record['is_synthetic'] = True
-                        augmented_records.append(synthetic_record)
-            
-            if augmented_records:
-                synthetic_df = pd.concat(augmented_records, ignore_index=True)
-                df['is_synthetic'] = False
-                augmented_df = pd.concat([df, synthetic_df], ignore_index=True)
+        if not demo_cols:
+            self.logger.warning("No demographic columns found for augmentation")
+            return df
+        
+        augmented_records = []
+        
+        for name, group in df.groupby(demo_cols):
+            if len(group) < self.bias_thresholds['min_sample_size']:
+                # Use intelligent oversampling: sample with replacement from existing records
+                # This maintains all clinical relationships and data integrity
+                needed = self.bias_thresholds['min_sample_size'] - len(group)
                 
-                self.logger.info(f"Applied synthetic augmentation: {len(df)} -> {len(augmented_df)} records")
-                return augmented_df
+                # Sample existing records with replacement (maintains all relationships)
+                oversampled = group.sample(
+                    n=needed,
+                    replace=True,
+                    random_state=42
+                ).copy()
+                
+                # Only modify safe non-clinical metadata fields if they exist
+                # Never modify: IDs, clinical values, lab results, diagnoses, etc.
+                safe_metadata_fields = []  # Add any safe metadata fields here if needed
+                
+                # Mark as augmented for tracking (not modifying clinical data)
+                oversampled['is_augmented'] = True
+                augmented_records.append(oversampled)
+        
+        if augmented_records:
+            augmented_df = pd.concat(augmented_records, ignore_index=True)
+            df['is_augmented'] = False
+            final_df = pd.concat([df, augmented_df], ignore_index=True)
+            
+            self.logger.info(
+                f"Applied intelligent oversampling (safe for structured data): "
+                f"{len(df)} -> {len(final_df)} records"
+            )
+            return final_df
         
         return df
     
