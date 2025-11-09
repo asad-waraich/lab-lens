@@ -1,8 +1,8 @@
 {
   "pipeline_config": {
-    "input_path": "data/raw",
-    "output_path": "data/processed",
-    "logs_path": "logs",
+   "input_path": "data-pipeline/data/raw",
+   "output_path": "data-pipeline/data/processed",
+   "logs_path": "data-pipeline/logs",
     "enable_preprocessing": true,
     "enable_validation": true,
     "enable_bias_detection": true,

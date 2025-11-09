@@ -250,3 +250,10 @@ ENV/
 # Logs
 logs/*.json
 logs/bias_plots/*.png
+credentials/
+.env
+credentials/oauth_client.json
+airflow/airflow.db
+airflow/airflow-webserver.pid
+airflow/logs/
+airflow/airflow.cfg

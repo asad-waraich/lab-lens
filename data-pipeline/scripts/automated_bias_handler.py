@@ -1,6 +1,7 @@
 """
-Automated Bias Detection and Mitigation Pipeline
-Provides automated bias detection, reporting, and mitigation strategies
+Automated Bias Mitigation Pipeline for MIMIC-III Data
+Author: Lab Lens Team
+Description: Detects bias and applies mitigation strategies to reduce demographic disparities
 """
 
 import pandas as pd
@@ -21,464 +22,591 @@ from utils.error_handling import (
     validate_dataframe, validate_file_path, ErrorContext
 )
 
+# Set up logging
+logger = get_logger(__name__)
+
 
 class AutomatedBiasHandler:
-    """Automated bias detection and mitigation system"""
+    """Automated bias detection and mitigation system for healthcare data"""
     
-    def __init__(self, config_path: Optional[str] = None):
-        self.logger = get_logger(__name__)
-        self.error_handler = ErrorHandler(self.logger)
-        
-        # Bias thresholds
-        self.bias_thresholds = {
-            'gender_cv_max': 5.0,  # Maximum coefficient of variation for gender
-            'ethnicity_cv_max': 10.0,  # Maximum coefficient of variation for ethnicity
-            'age_cv_max': 8.0,  # Maximum coefficient of variation for age
-            'overall_bias_score_max': 10.0,  # Maximum overall bias score
-            'min_sample_size': 30,  # Minimum sample size per group
-            'significance_threshold': 0.05  # Statistical significance threshold
-        }
-        
-        # Mitigation strategies (ordered by safety for structured medical data)
-        self.mitigation_strategies = {
-            'sampling': 'stratified_sampling',  # Safest: maintains data integrity
-            'weighting': 'demographic_weighting',  # Safe: adds weights without modifying data
-            'balancing': 'oversampling_minority_groups',  # Safe: duplicates existing records
-            'augmentation': 'intelligent_oversampling'  # Note: Not true synthetic generation for structured data
-        }
-        
-        # Load configuration
-        self.config = self._load_config(config_path)
-    
-    def _load_config(self, config_path: Optional[str]) -> Dict[str, Any]:
-        """Load bias detection configuration"""
-        default_config = {
-            'enabled': True,
-            'auto_mitigation': True,
-            'report_generation': True,
-            'alert_thresholds': self.bias_thresholds,
-            'mitigation_enabled': True
-        }
-        
-        if config_path and os.path.exists(config_path):
-            try:
-                with open(config_path, 'r') as f:
-                    user_config = json.load(f)
-                default_config.update(user_config)
-                self.logger.info(f"Loaded bias configuration from {config_path}")
-            except Exception as e:
-                self.logger.warning(f"Failed to load config from {config_path}: {e}")
-        
-        return default_config
-    
-    def detect_bias(self, df: pd.DataFrame, bias_report: Dict[str, Any]) -> Dict[str, Any]:
+    def __init__(self, input_path: str = 'data/processed', output_path: str = 'logs', config: Dict = None):
         """
-        Detect bias patterns and determine if mitigation is needed
+        Initialize automated bias handler
         
         Args:
-            df: DataFrame with demographic data
-            bias_report: Existing bias analysis report
+            input_path: Path to processed data directory
+            output_path: Path to save mitigation reports
+            config: Configuration dictionary with bias thresholds
+        """
+        self.input_path = input_path
+        self.output_path = output_path
+        self.error_handler = ErrorHandler(logger)
+        
+        # Create output directories
+        try:
+            os.makedirs(output_path, exist_ok=True)
+            logger.info(f"Initialized bias handler with input: {input_path}, output: {output_path}")
+        except Exception as e:
+            raise self.error_handler.handle_file_error("directory_creation", output_path, e)
+        
+        # Load bias detection thresholds from config
+        if config and 'bias_detection_config' in config:
+            self.thresholds = config['bias_detection_config'].get('alert_thresholds', {})
+            self.mitigation_config = config['bias_detection_config']
+        else:
+            # Default thresholds
+            self.thresholds = {
+                'gender_cv_max': 5.0,
+                'ethnicity_cv_max': 10.0,
+                'age_cv_max': 8.0,
+                'overall_bias_score_max': 10.0,
+                'min_sample_size': 30,
+                'significance_threshold': 0.05
+            }
+            self.mitigation_config = {
+                'auto_mitigation': True,
+                'mitigation_enabled': True
+            }
+        
+        logger.info(f"Using bias thresholds: {self.thresholds}")
+    
+    def load_bias_report(self, filename: str = 'bias_report.json') -> Dict[str, Any]:
+        """
+        Load bias detection report from previous pipeline step
+        
+        Args:
+            filename: Name of bias report JSON file
             
         Returns:
-            Dictionary with bias detection results and recommendations
+            Dictionary with bias detection results
         """
-        detection_results = {
-            'timestamp': datetime.now().isoformat(),
-            'bias_detected': False,
+        filepath = os.path.join(self.output_path, filename)
+        
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"Bias report not found at {filepath}. Run bias_detection.py first.")
+        
+        logger.info(f"Loading bias report from {filepath}")
+        with open(filepath, 'r') as f:
+            bias_report = json.load(f)
+        
+        return bias_report
+    
+    def load_features_data(self, filename: str = 'mimic_features.csv') -> pd.DataFrame:
+        """
+        Load feature-engineered data for mitigation
+        
+        Args:
+            filename: Name of features CSV file
+            
+        Returns:
+            DataFrame with features
+        """
+        filepath = os.path.join(self.input_path, filename)
+        
+        validate_file_path(filepath, logger, must_exist=True)
+        
+        logger.info(f"Loading features data from {filepath}")
+        df = pd.read_csv(filepath)
+        logger.info(f"Loaded {len(df)} records with {len(df.columns)} features")
+        
+        return df
+    
+    def analyze_bias_severity(self, bias_report: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Analyze bias severity and determine mitigation strategy
+        
+        Args:
+            bias_report: Bias detection report
+            
+        Returns:
+            Dictionary with severity analysis and recommendations
+        """
+        analysis = {
             'critical_biases': [],
-            'warnings': [],
-            'recommendations': [],
             'mitigation_needed': False,
-            'bias_score': 0.0
+            'severity_level': 'none',
+            'primary_bias_type': None
         }
         
         # Check overall bias score
         if 'summary_metrics' in bias_report:
             overall_score = bias_report['summary_metrics'].get('overall_bias_score', 0)
-            detection_results['bias_score'] = overall_score
             
-            if overall_score > self.bias_thresholds['overall_bias_score_max']:
-                detection_results['bias_detected'] = True
-                detection_results['critical_biases'].append({
+            if overall_score > self.thresholds['overall_bias_score_max']:
+                analysis['mitigation_needed'] = True
+                
+                # Determine severity level
+                if overall_score > 20:
+                    analysis['severity_level'] = 'critical'
+                elif overall_score > 15:
+                    analysis['severity_level'] = 'high'
+                elif overall_score > 10:
+                    analysis['severity_level'] = 'medium'
+                
+                analysis['critical_biases'].append({
                     'type': 'overall_bias_score',
                     'value': overall_score,
-                    'threshold': self.bias_thresholds['overall_bias_score_max'],
-                    'severity': 'high' if overall_score > 20 else 'medium'
+                    'threshold': self.thresholds['overall_bias_score_max']
                 })
-        
-        # Check demographic variations
-        for demo_type in ['gender_cv', 'ethnicity_cv', 'age_cv']:
-            if demo_type in bias_report.get('summary_metrics', {}):
-                cv_value = bias_report['summary_metrics'][demo_type]
-                threshold_key = f"{demo_type.split('_')[0]}_cv_max"
-                
-                if cv_value > self.bias_thresholds[threshold_key]:
-                    detection_results['bias_detected'] = True
-                    detection_results['critical_biases'].append({
-                        'type': demo_type,
-                        'value': cv_value,
-                        'threshold': self.bias_thresholds[threshold_key],
-                        'severity': 'high' if cv_value > self.bias_thresholds[threshold_key] * 2 else 'medium'
-                    })
-        
-        # Check statistical significance
-        if 'documentation_bias' in bias_report:
-            doc_bias = bias_report['documentation_bias']
-            if 'documentation_length_bias' in doc_bias:
-                if 'gender_ttest' in doc_bias['documentation_length_bias']:
-                    p_value = doc_bias['documentation_length_bias']['gender_ttest']['p_value']
-                    if p_value < self.bias_thresholds['significance_threshold']:
-                        detection_results['bias_detected'] = True
-                        detection_results['critical_biases'].append({
-                            'type': 'statistical_significance',
-                            'value': p_value,
-                            'threshold': self.bias_thresholds['significance_threshold'],
-                            'severity': 'high'
+            
+            # Identify primary bias type (highest CV)
+            cv_scores = {}
+            for bias_type in ['gender_cv', 'ethnicity_cv', 'age_cv']:
+                if bias_type in bias_report['summary_metrics']:
+                    cv_value = bias_report['summary_metrics'][bias_type]
+                    cv_scores[bias_type] = cv_value
+                    
+                    threshold_key = f"{bias_type.split('_')[0]}_cv_max"
+                    if cv_value > self.thresholds.get(threshold_key, 999):
+                        analysis['critical_biases'].append({
+                            'type': bias_type,
+                            'value': cv_value,
+                            'threshold': self.thresholds[threshold_key]
                         })
+            
+            # Set primary bias type as the one with highest CV
+            if cv_scores:
+                analysis['primary_bias_type'] = max(cv_scores, key=cv_scores.get)
         
-        # Generate recommendations
-        detection_results['recommendations'] = self._generate_recommendations(detection_results)
+        logger.info(f"Bias severity: {analysis['severity_level']}, Primary bias: {analysis['primary_bias_type']}")
         
-        # Determine if mitigation is needed
-        detection_results['mitigation_needed'] = (
-            detection_results['bias_detected'] and 
-            self.config.get('mitigation_enabled', True)
-        )
-        
-        return detection_results
+        return analysis
     
-    def _generate_recommendations(self, detection_results: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def apply_stratified_balancing(self, df: pd.DataFrame, demo_col: str) -> pd.DataFrame:
         """
-        Generate bias mitigation recommendations
-        
-        Note: Recommendations prioritize safe methods for structured medical data:
-        1. Stratified sampling (safest - maintains all data integrity)
-        2. Oversampling (safe - duplicates existing records)
-        3. Demographic weighting (safe - adds weights without modifying data)
-        4. Intelligent oversampling (last resort - avoids true synthetic generation)
-        
-        True synthetic data generation is NOT recommended for structured medical data
-        as it can create invalid clinical values and break data relationships.
-        """
-        recommendations = []
-        
-        for bias in detection_results['critical_biases']:
-            bias_type = bias['type']
-            severity = bias['severity']
-            
-            if bias_type == 'overall_bias_score':
-                recommendations.append({
-                    'type': 'comprehensive_rebalancing',
-                    'priority': 'high' if severity == 'high' else 'medium',
-                    'description': 'Implement comprehensive demographic rebalancing',
-                    'strategy': 'stratified_sampling',
-                    'estimated_impact': 'high'
-                })
-            
-            elif 'cv' in bias_type:
-                demo_type = bias_type.split('_')[0]
-                recommendations.append({
-                    'type': f'{demo_type}_balancing',
-                    'priority': 'high' if severity == 'high' else 'medium',
-                    'description': f'Balance {demo_type} representation in dataset',
-                    'strategy': 'oversampling_minority_groups',
-                    'estimated_impact': 'medium'
-                })
-            
-            elif bias_type == 'statistical_significance':
-                recommendations.append({
-                    'type': 'statistical_correction',
-                    'priority': 'high',
-                    'description': 'Apply statistical correction for significant differences',
-                    'strategy': 'demographic_weighting',
-                    'estimated_impact': 'high'
-                })
-        
-        return recommendations
-    
-    def apply_mitigation(self, df: pd.DataFrame, recommendations: List[Dict[str, Any]]) -> pd.DataFrame:
-        """
-        Apply bias mitigation strategies to the dataset
+        Apply stratified balancing to equalize group sizes
         
         Args:
-            df: Original DataFrame
-            recommendations: List of mitigation recommendations
+            df: Input DataFrame
+            demo_col: Demographic column to balance (gender, ethnicity_clean, age_group)
+            
+        Returns:
+            Balanced DataFrame
+        """
+        if demo_col not in df.columns:
+            logger.warning(f"Column {demo_col} not found, skipping stratified balancing")
+            return df
+        
+        # Get group counts
+        group_counts = df[demo_col].value_counts()
+        logger.info(f"Original {demo_col} distribution: {group_counts.to_dict()}")
+        
+        # Calculate target size (average of all groups, or median to avoid outliers)
+        target_size = int(group_counts.median())
+        
+        balanced_groups = []
+        
+        for group_value in group_counts.index:
+            group_data = df[df[demo_col] == group_value]
+            current_size = len(group_data)
+            
+            if current_size > target_size:
+                # Downsample larger groups
+                sampled = group_data.sample(n=target_size, random_state=42)
+                balanced_groups.append(sampled)
+            elif current_size < target_size:
+                # Upsample smaller groups (duplicate existing records)
+                upsampled = group_data.sample(n=target_size, replace=True, random_state=42)
+                balanced_groups.append(upsampled)
+            else:
+                balanced_groups.append(group_data)
+        
+        balanced_df = pd.concat(balanced_groups, ignore_index=True)
+        
+        # Verify balancing
+        new_counts = balanced_df[demo_col].value_counts()
+        logger.info(f"Balanced {demo_col} distribution: {new_counts.to_dict()}")
+        logger.info(f"Applied stratified balancing: {len(df)} -> {len(balanced_df)} records")
+        
+        return balanced_df
+    
+    def apply_oversampling_minority_groups(self, df: pd.DataFrame, demo_col: str) -> pd.DataFrame:
+        """
+        Apply oversampling to minority groups to match majority group size
+        
+        Args:
+            df: Input DataFrame
+            demo_col: Demographic column to balance
+            
+        Returns:
+            DataFrame with oversampled minority groups
+        """
+        if demo_col not in df.columns:
+            logger.warning(f"Column {demo_col} not found, skipping oversampling")
+            return df
+        
+        # Get group sizes
+        group_counts = df[demo_col].value_counts()
+        max_size = group_counts.max()
+        
+        oversampled_groups = []
+        
+        for group_value in group_counts.index:
+            group_data = df[df[demo_col] == group_value]
+            current_size = len(group_data)
+            
+            if current_size < max_size:
+                # Oversample to match largest group
+                factor = max_size / current_size
+                oversampled = group_data.sample(n=max_size, replace=True, random_state=42)
+                oversampled_groups.append(oversampled)
+                logger.info(f"Oversampled {demo_col}={group_value}: {current_size} -> {max_size} ({factor:.2f}x)")
+            else:
+                oversampled_groups.append(group_data)
+        
+        balanced_df = pd.concat(oversampled_groups, ignore_index=True)
+        logger.info(f"Applied oversampling: {len(df)} -> {len(balanced_df)} records")
+        
+        return balanced_df
+    
+    def apply_demographic_weighting(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Add demographic weights to balance representation without changing data
+        
+        Args:
+            df: Input DataFrame
+            
+        Returns:
+            DataFrame with demographic_weight column added
+        """
+        # Identify available demographic columns
+        demo_cols = [col for col in ['gender', 'ethnicity_clean', 'age_group'] if col in df.columns]
+        
+        if not demo_cols:
+            logger.warning("No demographic columns found for weighting")
+            return df
+        
+        # Calculate inverse frequency weights
+        weights = []
+        
+        for idx, row in df.iterrows():
+            # Create group key from demographics
+            group_values = tuple(row[col] for col in demo_cols if pd.notna(row[col]))
+            
+            # Find group size
+            mask = pd.Series([True] * len(df))
+            for col in demo_cols:
+                if pd.notna(row[col]):
+                    mask &= (df[col] == row[col])
+            
+            group_size = mask.sum()
+            
+            # Calculate weight as inverse of group proportion
+            if group_size > 0:
+                weight = len(df) / (len(demo_cols) * group_size)
+            else:
+                weight = 1.0
+            
+            weights.append(weight)
+        
+        df['demographic_weight'] = weights
+        
+        logger.info(f"Applied demographic weighting. Weight range: [{min(weights):.3f}, {max(weights):.3f}]")
+        
+        return df
+    
+    def apply_mitigation_strategy(self, df: pd.DataFrame, analysis: Dict[str, Any]) -> pd.DataFrame:
+        """
+        Apply appropriate mitigation strategy based on bias analysis
+        
+        Args:
+            df: Input DataFrame
+            analysis: Bias severity analysis
             
         Returns:
             Mitigated DataFrame
         """
+        if not analysis['mitigation_needed']:
+            logger.info("No mitigation needed - bias within acceptable thresholds")
+            return df
+        
         mitigated_df = df.copy()
         
-        for rec in recommendations:
-            strategy = rec['strategy']
-            
-            if strategy == 'stratified_sampling':
-                mitigated_df = self._apply_stratified_sampling(mitigated_df)
-            
-            elif strategy == 'oversampling_minority_groups':
-                mitigated_df = self._apply_oversampling(mitigated_df, rec['type'])
-            
-            elif strategy == 'demographic_weighting':
-                mitigated_df = self._apply_demographic_weighting(mitigated_df)
-            
-            elif strategy == 'synthetic_data_generation' or strategy == 'intelligent_oversampling':
-                # For structured medical data, use safe oversampling instead of synthetic generation
-                mitigated_df = self._apply_synthetic_augmentation(mitigated_df)
+        # Determine which demographic column to focus on
+        primary_bias = analysis.get('primary_bias_type', 'age_cv')
+        demo_col_map = {
+            'gender_cv': 'gender',
+            'ethnicity_cv': 'ethnicity_clean',
+            'age_cv': 'age_group'
+        }
         
-        self.logger.info(f"Applied bias mitigation: {len(df)} -> {len(mitigated_df)} records")
+        target_demo_col = demo_col_map.get(primary_bias, 'age_group')
+        
+        # Apply mitigation based on severity
+        severity = analysis['severity_level']
+        
+        if severity == 'critical':
+            # Critical: Apply stratified balancing (most aggressive)
+            logger.info(f"Applying critical mitigation: stratified balancing on {target_demo_col}")
+            mitigated_df = self.apply_stratified_balancing(mitigated_df, target_demo_col)
+            
+        elif severity == 'high':
+            # High: Apply oversampling of minority groups
+            logger.info(f"Applying high severity mitigation: oversampling on {target_demo_col}")
+            mitigated_df = self.apply_oversampling_minority_groups(mitigated_df, target_demo_col)
+            
+        elif severity == 'medium':
+            # Medium: Apply demographic weighting
+            logger.info(f"Applying medium severity mitigation: demographic weighting")
+            mitigated_df = self.apply_demographic_weighting(mitigated_df)
+        
+        # Add mitigation metadata
+        mitigated_df['bias_mitigated'] = True
+        mitigated_df['mitigation_strategy'] = severity
+        mitigated_df['mitigation_timestamp'] = datetime.now().isoformat()
+        
         return mitigated_df
     
-    def _apply_stratified_sampling(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Apply stratified sampling to balance demographics"""
-        # Identify demographic columns
-        demo_cols = [col for col in df.columns if col in ['gender', 'ethnicity_group', 'age_group']]
-        
-        if not demo_cols:
-            self.logger.warning("No demographic columns found for stratified sampling")
-            return df
-        
-        # Calculate target sample size per group
-        min_group_size = df.groupby(demo_cols).size().min()
-        target_size = min(min_group_size, len(df) // 10)  # Cap at 10% of total
-        
-        # Stratified sampling
-        sampled_groups = []
-        for name, group in df.groupby(demo_cols):
-            if len(group) >= target_size:
-                sampled_group = group.sample(n=target_size, random_state=42)
-                sampled_groups.append(sampled_group)
-        
-        if sampled_groups:
-            balanced_df = pd.concat(sampled_groups, ignore_index=True)
-            self.logger.info(f"Applied stratified sampling: {len(df)} -> {len(balanced_df)} records")
-            return balanced_df
-        
-        return df
-    
-    def _apply_oversampling(self, df: pd.DataFrame, bias_type: str) -> pd.DataFrame:
-        """Apply oversampling to minority groups"""
-        if 'gender' in df.columns and 'gender' in bias_type:
-            # Oversample minority gender
-            gender_counts = df['gender'].value_counts()
-            minority_gender = gender_counts.idxmin()
-            majority_gender = gender_counts.idxmax()
-            
-            minority_group = df[df['gender'] == minority_gender]
-            oversample_factor = gender_counts[majority_gender] // gender_counts[minority_gender]
-            
-            if oversample_factor > 1:
-                oversampled_minority = minority_group.sample(
-                    n=len(minority_group) * oversample_factor, 
-                    replace=True, 
-                    random_state=42
-                )
-                
-                balanced_df = pd.concat([
-                    df[df['gender'] == majority_gender],
-                    oversampled_minority
-                ], ignore_index=True)
-                
-                self.logger.info(f"Applied gender oversampling: {len(df)} -> {len(balanced_df)} records")
-                return balanced_df
-        
-        return df
-    
-    def _apply_demographic_weighting(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Apply demographic weighting to balance representation"""
-        # Calculate weights based on inverse frequency
-        demo_cols = [col for col in df.columns if col in ['gender', 'ethnicity_group', 'age_group']]
-        
-        if demo_cols:
-            weights = []
-            for _, row in df.iterrows():
-                group_key = tuple(row[col] for col in demo_cols)
-                group_count = len(df.groupby(demo_cols).get_group(group_key))
-                weight = len(df) / (len(df.groupby(demo_cols)) * group_count)
-                weights.append(weight)
-            
-            df['demographic_weight'] = weights
-            self.logger.info("Applied demographic weighting")
-        
-        return df
-    
-    def _apply_synthetic_augmentation(self, df: pd.DataFrame) -> pd.DataFrame:
+    def calculate_post_mitigation_metrics(self, df: pd.DataFrame) -> Dict[str, float]:
         """
-        Apply safe data augmentation for minority groups using intelligent oversampling
+        Calculate bias metrics after mitigation to verify improvement
         
-        Note: For structured medical data, we use smart oversampling rather than
-        synthetic data generation to maintain clinical validity and data integrity.
-        This method duplicates existing records with slight variations only to safe
-        non-clinical fields (if any), maintaining referential integrity.
-        """
-        self.logger.warning(
-            "Synthetic data generation is not recommended for structured medical data. "
-            "Using intelligent oversampling instead to maintain clinical validity."
-        )
-        
-        # For structured medical data, use oversampling instead of synthetic generation
-        # This maintains clinical validity and data integrity
-        demo_cols = [col for col in df.columns if col in ['gender', 'ethnicity_group', 'age_group']]
-        
-        if not demo_cols:
-            self.logger.warning("No demographic columns found for augmentation")
-            return df
-        
-        augmented_records = []
-        
-        for name, group in df.groupby(demo_cols):
-            if len(group) < self.bias_thresholds['min_sample_size']:
-                # Use intelligent oversampling: sample with replacement from existing records
-                # This maintains all clinical relationships and data integrity
-                needed = self.bias_thresholds['min_sample_size'] - len(group)
-                
-                # Sample existing records with replacement (maintains all relationships)
-                oversampled = group.sample(
-                    n=needed,
-                    replace=True,
-                    random_state=42
-                ).copy()
-                
-                # Only modify safe non-clinical metadata fields if they exist
-                # Never modify: IDs, clinical values, lab results, diagnoses, etc.
-                safe_metadata_fields = []  # Add any safe metadata fields here if needed
-                
-                # Mark as augmented for tracking (not modifying clinical data)
-                oversampled['is_augmented'] = True
-                augmented_records.append(oversampled)
-        
-        if augmented_records:
-            augmented_df = pd.concat(augmented_records, ignore_index=True)
-            df['is_augmented'] = False
-            final_df = pd.concat([df, augmented_df], ignore_index=True)
+        Args:
+            df: Mitigated DataFrame
             
-            self.logger.info(
-                f"Applied intelligent oversampling (safe for structured data): "
-                f"{len(df)} -> {len(final_df)} records"
-            )
-            return final_df
+        Returns:
+            Dictionary with post-mitigation bias metrics
+        """
+        metrics = {}
         
-        return df
+        # Calculate CV for each demographic group if text_chars column exists
+        if 'text_chars' in df.columns:
+            # Gender CV
+            if 'gender' in df.columns:
+                gender_means = df.groupby('gender')['text_chars'].mean()
+                if len(gender_means) > 1 and gender_means.mean() > 0:
+                    cv = (gender_means.std() / gender_means.mean()) * 100
+                    metrics['gender_cv'] = float(cv)
+            
+            # Ethnicity CV
+            if 'ethnicity_clean' in df.columns:
+                ethnicity_means = df.groupby('ethnicity_clean')['text_chars'].mean()
+                if len(ethnicity_means) > 1 and ethnicity_means.mean() > 0:
+                    cv = (ethnicity_means.std() / ethnicity_means.mean()) * 100
+                    metrics['ethnicity_cv'] = float(cv)
+            
+            # Age CV
+            if 'age_group' in df.columns:
+                age_means = df.groupby('age_group')['text_chars'].mean()
+                if len(age_means) > 1 and age_means.mean() > 0:
+                    cv = (age_means.std() / age_means.mean()) * 100
+                    metrics['age_cv'] = float(cv)
+        
+        # Calculate overall bias score
+        cv_values = [v for k, v in metrics.items() if k.endswith('_cv')]
+        if cv_values:
+            metrics['overall_bias_score'] = float(np.mean(cv_values))
+        
+        return metrics
     
-    def generate_bias_report(self, detection_results: Dict[str, Any], 
-                           mitigation_applied: bool = False) -> Dict[str, Any]:
-        """Generate comprehensive bias detection and mitigation report"""
+    def generate_mitigation_report(self, original_metrics: Dict, post_mitigation_metrics: Dict,
+                                   analysis: Dict[str, Any], mitigation_applied: bool) -> Dict[str, Any]:
+        """
+        Generate comprehensive mitigation report with before/after comparison
+        
+        Args:
+            original_metrics: Bias metrics before mitigation
+            post_mitigation_metrics: Bias metrics after mitigation
+            analysis: Bias severity analysis
+            mitigation_applied: Whether mitigation was applied
+            
+        Returns:
+            Dictionary with complete mitigation report
+        """
         report = {
             'timestamp': datetime.now().isoformat(),
-            'bias_detection_summary': {
-                'bias_detected': detection_results['bias_detected'],
-                'bias_score': detection_results['bias_score'],
-                'critical_biases_count': len(detection_results['critical_biases']),
-                'mitigation_needed': detection_results['mitigation_needed']
-            },
-            'critical_biases': detection_results['critical_biases'],
-            'recommendations': detection_results['recommendations'],
-            'mitigation_status': {
-                'applied': mitigation_applied,
-                'strategies_used': [rec['strategy'] for rec in detection_results['recommendations']]
-            },
-            'compliance_status': self._assess_compliance(detection_results),
-            'next_steps': self._generate_next_steps(detection_results, mitigation_applied)
+            'mitigation_applied': mitigation_applied,
+            'severity_level': analysis['severity_level'],
+            'primary_bias_type': analysis['primary_bias_type'],
+            'before_mitigation': original_metrics,
+            'after_mitigation': post_mitigation_metrics if mitigation_applied else original_metrics,
+            'improvement': {},
+            'compliance_status': {},
+            'recommendations': []
         }
+        
+        # Calculate improvement
+        if mitigation_applied:
+            for metric_name in ['overall_bias_score', 'gender_cv', 'ethnicity_cv', 'age_cv']:
+                if metric_name in original_metrics and metric_name in post_mitigation_metrics:
+                    original_value = original_metrics[metric_name]
+                    new_value = post_mitigation_metrics[metric_name]
+                    improvement_pct = ((original_value - new_value) / original_value) * 100
+                    
+                    report['improvement'][metric_name] = {
+                        'original': original_value,
+                        'new': new_value,
+                        'improvement_percentage': improvement_pct,
+                        'absolute_reduction': original_value - new_value
+                    }
+        
+        # Check compliance with thresholds
+        metrics_to_check = post_mitigation_metrics if mitigation_applied else original_metrics
+        
+        compliance = {
+            'overall_compliant': True,
+            'violations': []
+        }
+        
+        for metric_name, threshold_key in [
+            ('overall_bias_score', 'overall_bias_score_max'),
+            ('gender_cv', 'gender_cv_max'),
+            ('ethnicity_cv', 'ethnicity_cv_max'),
+            ('age_cv', 'age_cv_max')
+        ]:
+            if metric_name in metrics_to_check:
+                value = metrics_to_check[metric_name]
+                threshold = self.thresholds.get(threshold_key, 999)
+                
+                if value > threshold:
+                    compliance['overall_compliant'] = False
+                    compliance['violations'].append({
+                        'metric': metric_name,
+                        'value': value,
+                        'threshold': threshold,
+                        'excess': value - threshold
+                    })
+        
+        report['compliance_status'] = compliance
+        
+        # Generate recommendations
+        if not compliance['overall_compliant']:
+            if mitigation_applied:
+                report['recommendations'].append("Additional mitigation required - consider more aggressive strategies")
+                report['recommendations'].append("Review data collection process for systematic biases")
+            else:
+                report['recommendations'].append("Apply bias mitigation strategies")
+            
+            report['recommendations'].append("Implement continuous bias monitoring")
+            report['recommendations'].append("Review model fairness metrics")
+        else:
+            report['recommendations'].append("Bias mitigation successful - continue monitoring")
+            report['recommendations'].append("Maintain current data quality standards")
         
         return report
     
-    def _assess_compliance(self, detection_results: Dict[str, Any]) -> Dict[str, Any]:
-        """Assess compliance with bias thresholds"""
-        compliance = {
-            'overall_compliant': True,
-            'threshold_violations': [],
-            'compliance_score': 100
-        }
+    def run_mitigation_pipeline(self) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+        """
+        Run complete automated bias mitigation pipeline
         
-        for bias in detection_results['critical_biases']:
-            compliance['overall_compliant'] = False
-            compliance['threshold_violations'].append({
-                'type': bias['type'],
-                'severity': bias['severity'],
-                'violation_amount': bias['value'] - bias['threshold']
-            })
+        Returns:
+            Tuple of (mitigated DataFrame, mitigation report)
+        """
+        logger.info("="*60)
+        logger.info("AUTOMATED BIAS MITIGATION PIPELINE")
+        logger.info("="*60)
+        
+        # Load bias report from detection step
+        bias_report = self.load_bias_report()
+        
+        # Load features data
+        df = self.load_features_data()
+        original_size = len(df)
+        
+        # Analyze bias severity
+        logger.info("Analyzing bias severity...")
+        analysis = self.analyze_bias_severity(bias_report)
+        
+        # Store original metrics
+        original_metrics = bias_report.get('summary_metrics', {})
+        
+        # Apply mitigation if needed
+        mitigated_df = df
+        mitigation_applied = False
+        
+        if analysis['mitigation_needed'] and self.mitigation_config.get('mitigation_enabled', True):
+            logger.info("Applying bias mitigation strategies...")
+            mitigated_df = self.apply_mitigation_strategy(df, analysis)
+            mitigation_applied = True
             
-            # Reduce compliance score based on severity
-            if bias['severity'] == 'high':
-                compliance['compliance_score'] -= 20
-            else:
-                compliance['compliance_score'] -= 10
+            # Calculate post-mitigation metrics
+            logger.info("Calculating post-mitigation bias metrics...")
+            post_mitigation_metrics = self.calculate_post_mitigation_metrics(mitigated_df)
+        else:
+            logger.info("No mitigation needed or mitigation disabled")
+            post_mitigation_metrics = original_metrics
         
-        compliance['compliance_score'] = max(0, compliance['compliance_score'])
+        # Generate comprehensive report
+        logger.info("Generating mitigation report...")
+        mitigation_report = self.generate_mitigation_report(
+            original_metrics,
+            post_mitigation_metrics,
+            analysis,
+            mitigation_applied
+        )
         
-        return compliance
-    
-    def _generate_next_steps(self, detection_results: Dict[str, Any], 
-                            mitigation_applied: bool) -> List[str]:
-        """Generate next steps based on bias detection results"""
-        next_steps = []
+        # Save mitigated dataset
+        if mitigation_applied:
+            output_file = os.path.join(self.input_path, 'mimic_features_mitigated.csv')
+            mitigated_df.to_csv(output_file, index=False)
+            logger.info(f"Saved mitigated dataset: {output_file}")
+            mitigation_report['mitigated_dataset_path'] = output_file
         
-        if detection_results['bias_detected']:
-            if not mitigation_applied:
-                next_steps.append("Apply recommended bias mitigation strategies")
-                next_steps.append("Re-run bias detection after mitigation")
-            
-            next_steps.append("Monitor bias metrics in production")
-            next_steps.append("Implement continuous bias monitoring")
-        
-        if detection_results['bias_score'] > self.bias_thresholds['overall_bias_score_max']:
-            next_steps.append("Review data collection processes")
-            next_steps.append("Consider additional data sources")
-        
-        if not next_steps:
-            next_steps.append("Continue monitoring bias metrics")
-            next_steps.append("Maintain current data quality standards")
-        
-        return next_steps
-    
-    def save_bias_report(self, report: Dict[str, Any], output_path: str):
-        """Save bias detection and mitigation report"""
-        os.makedirs(output_path, exist_ok=True)
-        
-        report_file = os.path.join(output_path, f"automated_bias_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-        
+        # Save mitigation report
+        report_file = os.path.join(self.output_path, 'bias_mitigation_report.json')
         with open(report_file, 'w') as f:
-            json.dump(report, f, indent=2, default=str)
+            json.dump(mitigation_report, f, indent=2, default=str)
+        logger.info(f"Saved mitigation report: {report_file}")
         
-        self.logger.info(f"Saved automated bias report to {report_file}")
-        return report_file
-
-
-def run_automated_bias_handling(df: pd.DataFrame, bias_report: Dict[str, Any], 
-                               config_path: Optional[str] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-    """
-    Run automated bias detection and mitigation pipeline
-    
-    Args:
-        df: DataFrame to analyze and potentially mitigate
-        bias_report: Existing bias analysis report
-        config_path: Path to configuration file
+        logger.info("="*60)
+        logger.info("BIAS MITIGATION COMPLETE")
+        logger.info("="*60)
         
-    Returns:
-        Tuple of (mitigated_dataframe, bias_handling_report)
-    """
-    handler = AutomatedBiasHandler(config_path)
-    
-    # Detect bias
-    detection_results = handler.detect_bias(df, bias_report)
-    
-    # Apply mitigation if needed
-    mitigated_df = df
-    mitigation_applied = False
-    
-    if detection_results['mitigation_needed']:
-        mitigated_df = handler.apply_mitigation(df, detection_results['recommendations'])
-        mitigation_applied = True
-    
-    # Generate comprehensive report
-    report = handler.generate_bias_report(detection_results, mitigation_applied)
-    
-    return mitigated_df, report
+        return mitigated_df, mitigation_report
 
 
 if __name__ == "__main__":
-    # Example usage
-    logger = get_logger(__name__)
+    import json
     
-    # This would typically be called from the main pipeline
-    logger.info("Automated bias handling module loaded successfully")
+    # Load configuration from project
+    config_path = os.path.join(os.path.dirname(__file__), '../configs/pipeline_config.json')
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+    
+    # Initialize bias handler with config
+    handler = AutomatedBiasHandler(
+        input_path=config['pipeline_config']['output_path'],
+        output_path=config['pipeline_config']['logs_path'],
+        config=config
+    )
+    
+    # Run mitigation pipeline
+    mitigated_df, report = handler.run_mitigation_pipeline()
+    
+    # Print results
+    print("\n" + "="*60)
+    print("BIAS MITIGATION RESULTS")
+    print("="*60)
+    print(f"Mitigation Applied: {report['mitigation_applied']}")
+    print(f"Severity Level: {report['severity_level']}")
+    print(f"Primary Bias Type: {report['primary_bias_type']}")
+    
+    if report['mitigation_applied']:
+        print("\nBias Score Changes:")
+        if 'improvement' in report and 'overall_bias_score' in report['improvement']:
+            imp = report['improvement']['overall_bias_score']
+            print(f"  Before: {imp['original']:.2f}")
+            print(f"  After:  {imp['new']:.2f}")
+            print(f"  Improvement: {imp['improvement_percentage']:.1f}%")
+        
+        print("\nRecords:")
+        print(f"  Original: {report['before_mitigation'].get('record_count', 'N/A')}")
+        print(f"  Mitigated: {len(mitigated_df)}")
+    
+    print("\nCompliance Status:")
+    print(f"  Overall Compliant: {report['compliance_status']['overall_compliant']}")
+    
+    if report['compliance_status']['violations']:
+        print("  Remaining Violations:")
+        for violation in report['compliance_status']['violations']:
+            print(f"    - {violation['metric']}: {violation['value']:.2f} (threshold: {violation['threshold']:.2f})")
+    
+    print("\nRecommendations:")
+    for i, rec in enumerate(report['recommendations'], 1):
+        print(f"  {i}. {rec}")
+    
+    print("\nOutput Files:")
+    print(f"  Mitigation Report: {config['pipeline_config']['logs_path']}/bias_mitigation_report.json")
+    if report['mitigation_applied']:
+        print(f"  Mitigated Dataset: {report.get('mitigated_dataset_path', 'N/A')}")
+    print("="*60)
