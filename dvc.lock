@@ -1,0 +1,106 @@
+schema: '2.0'
+stages:
+  preprocessing:
+    cmd: python data-pipeline/scripts/preprocessing.py
+    deps:
+    - path: data-pipeline/configs/pipeline_config.json
+      hash: md5
+      md5: f5c13470a443d7aac9a87ba07f91e40e
+      size: 3445
+    - path: data-pipeline/data/raw/mimic_discharge_labs.csv
+      hash: md5
+      md5: 4782fafe25e5d62e5212110ed09db757
+      size: 95842026
+    - path: data-pipeline/scripts/preprocessing.py
+      hash: md5
+      md5: 3a1b7b502cd06910da376dca244abe88
+      size: 20961
+    outs:
+    - path: data-pipeline/data/processed/preprocessing_report.csv
+      hash: md5
+      md5: b0af371395769feb4f66c0e8b94f572d
+      size: 270
+    - path: data-pipeline/data/processed/processed_discharge_summaries.csv
+      hash: md5
+      md5: 54f96005314401e147af89b933a8bacb
+      size: 103169707
+  validation:
+    cmd: python data-pipeline/scripts/validation.py
+    deps:
+    - path: data-pipeline/data/processed/processed_discharge_summaries.csv
+      hash: md5
+      md5: 54f96005314401e147af89b933a8bacb
+      size: 103169707
+    - path: data-pipeline/scripts/validation.py
+      hash: md5
+      md5: 62689b9d987f5c5a90b6a2765b65de13
+      size: 27750
+    outs:
+    - path: data-pipeline/logs/validation_report.json
+      hash: md5
+      md5: 7c1152e7237d264ce5f0002b820c1c65
+      size: 7814
+    - path: data-pipeline/logs/validation_summary.csv
+      hash: md5
+      md5: a135e56cd745de4a14d65c275fb1d48b
+      size: 233
+  feature_engineering:
+    cmd: python data-pipeline/scripts/feature_engineering.py
+    deps:
+    - path: data-pipeline/data/processed/processed_discharge_summaries.csv
+      hash: md5
+      md5: 54f96005314401e147af89b933a8bacb
+      size: 103169707
+    - path: data-pipeline/scripts/feature_engineering.py
+      hash: md5
+      md5: 7bcd7d7551e3384e64f1d6f822e1257a
+      size: 25291
+    outs:
+    - path: data-pipeline/data/processed/mimic_features.csv
+      hash: md5
+      md5: d10dacb2ee6bcceb53ec3656ff75836f
+      size: 21860028
+  bias_detection:
+    cmd: python data-pipeline/scripts/bias_detection.py
+    deps:
+    - path: data-pipeline/data/processed/mimic_features.csv
+      hash: md5
+      md5: d10dacb2ee6bcceb53ec3656ff75836f
+      size: 21860028
+    - path: data-pipeline/scripts/bias_detection.py
+      hash: md5
+      md5: 6e8773fe73aee61bcac0f81578d1d59e
+      size: 30011
+    outs:
+    - path: data-pipeline/logs/bias_report.json
+      hash: md5
+      md5: 5caf90b355bfbd72b51aafbe99277b2b
+      size: 10463
+    - path: data-pipeline/logs/bias_summary.csv
+      hash: md5
+      md5: ccb60554af660d16b161f8309f36e569
+      size: 121
+  bias_mitigation:
+    cmd: python data-pipeline/scripts/automated_bias_handler.py
+    deps:
+    - path: data-pipeline/data/processed/mimic_features.csv
+      hash: md5
+      md5: d10dacb2ee6bcceb53ec3656ff75836f
+      size: 21860028
+    - path: data-pipeline/logs/bias_report.json
+      hash: md5
+      md5: 5caf90b355bfbd72b51aafbe99277b2b
+      size: 10463
+    - path: data-pipeline/scripts/automated_bias_handler.py
+      hash: md5
+      md5: 0e4b9bedabb3b210b5c2af93ebc5e8bf
+      size: 24434
+    outs:
+    - path: data-pipeline/data/processed/mimic_features_mitigated.csv
+      hash: md5
+      md5: 163457877af09ca9b8bf4092aaa1e034
+      size: 31853580
+    - path: data-pipeline/logs/bias_mitigation_report.json
+      hash: md5
+      md5: 4b59f02ed9febc659d8610381b559b54
+      size: 1560
