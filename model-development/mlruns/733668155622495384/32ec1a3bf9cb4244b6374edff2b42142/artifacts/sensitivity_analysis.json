@@ -1,0 +1,10 @@
+{
+  "most_important_section": "Medications",
+  "least_important_section": "History",
+  "sensitivity_scores": {
+    "Medications": 0.068,
+    "Diagnosis": 0.034,
+    "History": 0.0,
+    "Instructions": 0.026
+  }
+}

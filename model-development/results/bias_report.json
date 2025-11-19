@@ -1,0 +1,12 @@
+{
+  "results": {
+    "gender": {},
+    "age_group": {},
+    "ethnicity_clean": {}
+  },
+  "report": {
+    "significant_disparities": [],
+    "recommendations": [],
+    "summary": "No significant bias detected (threshold: 10%)"
+  }
+}
