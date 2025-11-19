@@ -1,0 +1,12 @@
+{
+  "sensitivity_scores": {
+    "Medications": 0.06788511749347259,
+    "Diagnosis": 0.033942558746736295,
+    "History": 0.0,
+    "Instructions": 0.02610966057441253
+  },
+  "most_important_section": "Medications",
+  "least_important_section": "History",
+  "baseline_length": 383,
+  "analysis_summary": "The model is most sensitive to Medications (score: 0.068) and least sensitive to History (score: 0.000)"
+}
