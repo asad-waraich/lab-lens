@@ -30,7 +30,9 @@ class GCSStore:
             raise ValueError("GCS_BUCKET_USER_UPLOADS env var is required for GCS uploads")
         self._bucket = self._client.bucket(self._bucket_name)
 
-    def upload_bytes(self, *, uid: str, chat_id: str, filename: str, data: bytes, content_type: Optional[str] = None) -> UploadedObject:
+    def upload_bytes(
+        self, *, uid: str, chat_id: str, filename: str, data: bytes, content_type: Optional[str] = None
+    ) -> UploadedObject:
         # Never persist potentially identifying filenames in object paths.
         safe_name = sanitize_filename(filename).replace("/", "_")
         blob_name = f"{uid}/{chat_id}/{safe_name}"
@@ -38,4 +40,3 @@ class GCSStore:
         blob.upload_from_string(data, content_type=content_type)
         logger.info(f"Uploaded file to {self._bucket_name}/{blob_name}")
         return UploadedObject(bucket=self._bucket_name, blob_name=blob_name)
-

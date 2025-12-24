@@ -75,4 +75,3 @@ def verify_firebase_id_token(id_token: str) -> FirebaseUser:
         name=decoded.get("name"),
         picture=decoded.get("picture"),
     )
-

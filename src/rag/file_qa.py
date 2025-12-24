@@ -637,7 +637,9 @@ ANSWER:"""
             else:
                 answer_source = "general_knowledge"
 
-            safe_sources = redact_sources(retrieved_chunks, extra_terms=self.pii_extra_terms) if self.privacy_mode else retrieved_chunks
+            safe_sources = (
+                redact_sources(retrieved_chunks, extra_terms=self.pii_extra_terms) if self.privacy_mode else retrieved_chunks
+            )
 
             return {
                 "answer": answer,

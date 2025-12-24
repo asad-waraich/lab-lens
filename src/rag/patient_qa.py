@@ -139,7 +139,9 @@ Medications: {full_record.get('discharge_medications', 'N/A')}
 
             if hasattr(self.gemini.model, "answer_question"):
                 answer = self.gemini.model.answer_question(
-                    question=safe_question, context=safe_context, temperature=0.3  # Lower temperature for more consistent answers
+                    question=safe_question,
+                    context=safe_context,
+                    temperature=0.3,  # Lower temperature for more consistent answers
                 )
             else:
                 # Fallback to summarize method (older implementation)
@@ -153,7 +155,9 @@ Medications: {full_record.get('discharge_medications', 'N/A')}
                 "sources": [
                     {
                         "chunk": (
-                            redact_text(chunk_data["chunk"][:200] + "..." if len(chunk_data["chunk"]) > 200 else chunk_data["chunk"]).text
+                            redact_text(
+                                chunk_data["chunk"][:200] + "..." if len(chunk_data["chunk"]) > 200 else chunk_data["chunk"]
+                            ).text
                         ),
                         "score": chunk_data["score"],
                         "hadm_id": chunk_data["metadata"].get("hadm_id"),

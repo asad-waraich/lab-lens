@@ -16,8 +16,8 @@ from typing import Any, Dict, List, Optional, Tuple
 # Disable MPS (Apple Silicon GPU) before importing torch to prevent meta tensor errors
 # This must be done before any torch import
 if platform.system() == "Darwin":
-    os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
-    os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
+    os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+    os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "0.0"
 
 import numpy as np
 import pandas as pd
@@ -137,115 +137,110 @@ class RAGSystem:
                 # Use a custom embedding wrapper instead of SentenceTransformer
                 import torch
                 from transformers import AutoModel, AutoTokenizer
-                
+
                 model_name = f"sentence-transformers/{embedding_model}"
                 logger.info(f"Loading model {model_name} with custom wrapper...")
-                
+
                 class SimpleEmbedder:
                     """Simple wrapper for transformer model to generate embeddings without SentenceTransformer"""
-                    
+
                     def __init__(self, model_name, cache_dir):
                         import torch
                         from transformers import AutoConfig
                         from huggingface_hub import hf_hub_download
-                        
+
                         # Load tokenizer
                         self.tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
-                        
+
                         # Load model config
                         config = AutoConfig.from_pretrained(model_name, cache_dir=cache_dir)
                         self.embedding_dim = config.hidden_size
-                        
+
                         # Force model initialization on CPU (not meta device)
                         # by using torch.device context and low_cpu_mem_usage=False
                         try:
                             # Download safetensors and load manually
                             from safetensors.torch import load_file
+
                             weights_path = hf_hub_download(
-                                repo_id=model_name,
-                                filename="model.safetensors",
-                                cache_dir=cache_dir
+                                repo_id=model_name, filename="model.safetensors", cache_dir=cache_dir
                             )
                             logger.info(f"Downloaded safetensors to: {weights_path}")
-                            
+
                             # Load state dict to CPU
-                            state_dict = load_file(weights_path, device='cpu')
+                            state_dict = load_file(weights_path, device="cpu")
                             logger.info(f"Loaded state dict with {len(state_dict)} tensors")
-                            
+
                             # Create model on CPU device explicitly
-                            with torch.device('cpu'):
+                            with torch.device("cpu"):
                                 from transformers import BertModel
+
                                 self.model = BertModel._from_config(config, torch_dtype=torch.float32)
-                            
+
                             # Load state dict (strict=False to handle minor key mismatches like position_ids)
                             self.model.load_state_dict(state_dict, strict=False)
                             logger.info("Loaded weights successfully")
-                            
+
                         except Exception as e:
                             logger.warning(f"Safetensors loading failed: {e}, trying pytorch_model.bin...")
                             try:
                                 weights_path = hf_hub_download(
-                                    repo_id=model_name,
-                                    filename="pytorch_model.bin",
-                                    cache_dir=cache_dir
+                                    repo_id=model_name, filename="pytorch_model.bin", cache_dir=cache_dir
                                 )
-                                state_dict = torch.load(weights_path, map_location='cpu', weights_only=False)
-                                
-                                with torch.device('cpu'):
+                                state_dict = torch.load(weights_path, map_location="cpu", weights_only=False)
+
+                                with torch.device("cpu"):
                                     from transformers import BertModel
+
                                     self.model = BertModel._from_config(config, torch_dtype=torch.float32)
-                                
+
                                 self.model.load_state_dict(state_dict, strict=False)
                                 logger.info("Loaded weights from pytorch_model.bin successfully")
                             except Exception as e2:
                                 logger.error(f"All loading methods failed: {e2}")
                                 raise
-                        
+
                         # Ensure eval mode
                         self.model.eval()
-                    
+
                     def encode(self, texts, show_progress_bar=False, batch_size=32, convert_to_numpy=True):
                         """Encode texts to embeddings using mean pooling"""
                         import numpy as np
-                        
+
                         if isinstance(texts, str):
                             texts = [texts]
-                        
+
                         all_embeddings = []
                         for i in range(0, len(texts), batch_size):
-                            batch = texts[i:i+batch_size]
-                            
+                            batch = texts[i : i + batch_size]
+
                             # Tokenize
-                            encoded = self.tokenizer(
-                                batch, 
-                                padding=True, 
-                                truncation=True, 
-                                max_length=512, 
-                                return_tensors='pt'
-                            )
-                            
+                            encoded = self.tokenizer(batch, padding=True, truncation=True, max_length=512, return_tensors="pt")
+
                             # Generate embeddings
                             with torch.no_grad():
                                 outputs = self.model(**encoded)
-                            
+
                             # Mean pooling
-                            attention_mask = encoded['attention_mask']
+                            attention_mask = encoded["attention_mask"]
                             token_embeddings = outputs.last_hidden_state
                             input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-                            embeddings = torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-                            
+                            embeddings = torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
+                                input_mask_expanded.sum(1), min=1e-9
+                            )
+
                             if convert_to_numpy:
                                 embeddings = embeddings.cpu().numpy()
-                            
+
                             all_embeddings.append(embeddings)
-                        
+
                         if convert_to_numpy:
                             return np.vstack(all_embeddings)
                         return torch.cat(all_embeddings, dim=0)
-                    
+
                     def get_sentence_embedding_dimension(self):
                         return self.embedding_dim
-                
+
                 self.embedding_model = SimpleEmbedder(model_name, cache_dir)
                 self.embedding_dim = self.embedding_model.get_sentence_embedding_dimension()
                 logger.info(f"Embedding model loaded successfully. Dimension: {self.embedding_dim}")

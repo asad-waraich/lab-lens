@@ -62,7 +62,9 @@ def redact_text(text: str, *, extra_terms: Optional[Iterable[str]] = None) -> Re
     out = ssn_re.sub(_ssn_sub, out)
 
     # Dates of birth (common formats)
-    dob_re = re.compile(r"(?i)\b(DOB|Date\s*of\s*Birth)\b\s*[:\-]?\s*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}|[0-9]{4}-[0-9]{2}-[0-9]{2})")
+    dob_re = re.compile(
+        r"(?i)\b(DOB|Date\s*of\s*Birth)\b\s*[:\-]?\s*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}|[0-9]{4}-[0-9]{2}-[0-9]{2})"
+    )
 
     def _dob_sub(m: re.Match) -> str:
         bump("dob")
@@ -80,7 +82,9 @@ def redact_text(text: str, *, extra_terms: Optional[Iterable[str]] = None) -> Re
     out = date_re.sub(_date_sub, out)
 
     # Medical record numbers / patient IDs / account numbers (label-based)
-    mrn_re = re.compile(r"(?i)\b(MRN|Medical\s*Record\s*Number|Patient\s*ID|Account\s*(No|Number)|Acc\s*#)\b\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-]{3,})")
+    mrn_re = re.compile(
+        r"(?i)\b(MRN|Medical\s*Record\s*Number|Patient\s*ID|Account\s*(No|Number)|Acc\s*#)\b\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-]{3,})"
+    )
 
     def _mrn_sub(m: re.Match) -> str:
         bump("mrn")
@@ -89,9 +93,7 @@ def redact_text(text: str, *, extra_terms: Optional[Iterable[str]] = None) -> Re
     out = mrn_re.sub(_mrn_sub, out)
 
     # Patient name fields (label-based; avoids trying to solve generic NER)
-    name_re = re.compile(
-        r"(?i)\b(Patient\s*Name|Name)\b\s*[:\-]?\s*([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+){0,4})"
-    )
+    name_re = re.compile(r"(?i)\b(Patient\s*Name|Name)\b\s*[:\-]?\s*([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+){0,4})")
 
     def _name_sub(m: re.Match) -> str:
         bump("name")
@@ -151,4 +153,3 @@ def sanitize_filename(filename: str) -> str:
         base, ext = name.rsplit(".", 1)
         return f"file_{_hash_token(base)}.{ext[:10]}"
     return f"file_{_hash_token(name)}"
-

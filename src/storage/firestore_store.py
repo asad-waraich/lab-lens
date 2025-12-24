@@ -163,9 +163,13 @@ class FirestoreStore:
         # Update counts
         self.update_chat(uid, chat_id, chunk_count=len(chunks))
 
-    def load_chunks(self, uid: str, chat_id: str, limit: int = 5000) -> Tuple[List[str], List[List[float]], List[Dict[str, Any]]]:
+    def load_chunks(
+        self, uid: str, chat_id: str, limit: int = 5000
+    ) -> Tuple[List[str], List[List[float]], List[Dict[str, Any]]]:
         chunks_ref = self._client.collection("users").document(uid).collection("chats").document(chat_id).collection("chunks")
-        query = chunks_ref.order_by(self._firestore.FieldPath.document_id(), direction=self._firestore.Query.ASCENDING).limit(limit)
+        query = chunks_ref.order_by(self._firestore.FieldPath.document_id(), direction=self._firestore.Query.ASCENDING).limit(
+            limit
+        )
         chunks: List[str] = []
         embeddings: List[List[float]] = []
         metas: List[Dict[str, Any]] = []
@@ -176,3 +180,27 @@ class FirestoreStore:
             metas.append(dict(data.get("metadata", {})))
         return chunks, embeddings, metas
 
+    # ---- Sessions (refresh persistence) ----
+    def upsert_session(self, sid: str, user: Dict[str, Any], exp_ts: int) -> None:
+        """
+        Persist a browser session id -> user mapping.
+        `sid` is a random UUID stored in the URL; `exp_ts` is epoch seconds.
+        """
+        doc = self._client.collection("sessions").document(sid)
+        doc.set(
+            {
+                "user": user,
+                "exp": int(exp_ts),
+                "updated_at": _utcnow_iso(),
+            },
+            merge=True,
+        )
+
+    def get_session(self, sid: str) -> Optional[Dict[str, Any]]:
+        doc = self._client.collection("sessions").document(sid).get()
+        if not doc.exists:
+            return None
+        return doc.to_dict() or None
+
+    def delete_session(self, sid: str) -> None:
+        self._client.collection("sessions").document(sid).delete()

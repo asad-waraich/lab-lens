@@ -52,16 +52,16 @@ jobs:
             echo "❌ Error: GCP_SA_KEY secret is not set"
             exit 1
           fi
-          if [ "${{ secrets.FIREBASE_API_KEY != '' }}" != "true" ]; then
-            echo "❌ Error: FIREBASE_API_KEY secret is not set"
+          if [ "${{ secrets.GOOGLE_OAUTH_CLIENT_ID != '' }}" != "true" ]; then
+            echo "❌ Error: GOOGLE_OAUTH_CLIENT_ID secret is not set"
             exit 1
           fi
-          if [ "${{ secrets.FIREBASE_AUTH_DOMAIN != '' }}" != "true" ]; then
-            echo "❌ Error: FIREBASE_AUTH_DOMAIN secret is not set"
+          if [ "${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET != '' }}" != "true" ]; then
+            echo "❌ Error: GOOGLE_OAUTH_CLIENT_SECRET secret is not set"
             exit 1
           fi
-          if [ "${{ secrets.FIREBASE_APP_ID != '' }}" != "true" ]; then
-            echo "❌ Error: FIREBASE_APP_ID secret is not set"
+          if [ "${{ secrets.GOOGLE_OAUTH_REDIRECT_URI != '' }}" != "true" ]; then
+            echo "❌ Error: GOOGLE_OAUTH_REDIRECT_URI secret is not set"
             exit 1
           fi
           if [ "${{ secrets.GCS_BUCKET_USER_UPLOADS != '' }}" != "true" ]; then
@@ -110,6 +110,13 @@ jobs:
         id: deploy
         run: |
           echo "🚀 Deploying to Cloud Run..."
+          # Secrets can sometimes contain trailing newlines from copy/paste.
+          # If a newline sneaks into --set-env-vars, bash will split the command and fail (exit 127).
+          GCS_BUCKET_USER_UPLOADS="$(printf '%s' '${{ secrets.GCS_BUCKET_USER_UPLOADS }}' | tr -d '\r\n')"
+          GOOGLE_OAUTH_CLIENT_ID="$(printf '%s' '${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}' | tr -d '\r\n')"
+          GOOGLE_OAUTH_CLIENT_SECRET="$(printf '%s' '${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}' | tr -d '\r\n')"
+          GOOGLE_OAUTH_REDIRECT_URI="$(printf '%s' '${{ secrets.GOOGLE_OAUTH_REDIRECT_URI }}' | tr -d '\r\n')"
+
           gcloud run deploy $SERVICE_NAME \
             --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
             --platform managed \
@@ -121,7 +128,7 @@ jobs:
             --timeout 600 \
             --max-instances 10 \
             --min-instances 0 \
-            --set-env-vars HF_HOME=/root/.cache/huggingface,TRANSFORMERS_CACHE=/root/.cache/huggingface,FIRESTORE_PROJECT_ID=$PROJECT_ID,FIREBASE_PROJECT_ID=$PROJECT_ID,FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }},FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }},FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }},GCS_BUCKET_USER_UPLOADS=${{ secrets.GCS_BUCKET_USER_UPLOADS }} \
+            --set-env-vars "HF_HOME=/root/.cache/huggingface,TRANSFORMERS_CACHE=/root/.cache/huggingface,FIRESTORE_PROJECT_ID=$PROJECT_ID,FIREBASE_PROJECT_ID=$PROJECT_ID,GOOGLE_OAUTH_CLIENT_ID=$GOOGLE_OAUTH_CLIENT_ID,GOOGLE_OAUTH_CLIENT_SECRET=$GOOGLE_OAUTH_CLIENT_SECRET,GOOGLE_OAUTH_REDIRECT_URI=$GOOGLE_OAUTH_REDIRECT_URI,GCS_BUCKET_USER_UPLOADS=$GCS_BUCKET_USER_UPLOADS" \
             --set-secrets GEMINI_API_KEY=gemini-api-key:latest,GOOGLE_API_KEY=gemini-api-key:latest \
             --project $PROJECT_ID
 
